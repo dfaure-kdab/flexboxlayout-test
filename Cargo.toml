@@ -1,0 +1,18 @@
+[package]
+name = "flexboxlayout-test"
+description.workspace = true
+authors.workspace = true
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+slint = { workspace = true, features = ["std", "compat-1-2", "backend-winit", "renderer-skia"] }
+
+[build-dependencies]
+slint-build = { workspace = true, features = [ "default" ] }
