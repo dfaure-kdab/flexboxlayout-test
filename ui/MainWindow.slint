@@ -1,64 +1,142 @@
-component RadioButton {
-    in property <string> label;
+// Copyright © Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com, author David Faure <david.faure@kdab.com>
+// SPDX-License-Identifier: MIT
 
-    min-height: 24px;
+// Demo for the FlexboxLayout `layout-order` per-item property.
+// All three sections drive the visual order declaratively, in ways that
+// reordering a model cannot do (or only with extra bookkeeping):
+// order derived from item data, static heterogeneous elements, and
+// responsive reordering.
 
-    Rectangle {
-        width: 100%;
-        height: 100%;
+import { Button, CheckBox, Palette } from "std-widgets.slint";
 
-        background: #ff000055;
-    }
-
-    FlexboxLayout {
-        // flex-wrap: no-wrap;
-        cross-axis-alignment: center;
-        spacing: 8px;
-
-        Rectangle {
-            width: 24px;
-            height: 24px;
-            border-width: 3px;
-            border-color: #19a7d8;
-            border-radius: 12px;
-        }
-
-        Text {
-            text: root.label;
-            color: white;
-            font-size: 18px;
-            vertical-alignment: center;
-        }
-    }
+component SectionTitle inherits Text {
+    color: #9fd4e8;
+    font-size: 15px;
+    font-weight: 700;
+    overflow: elide;
 }
 
+export struct Task {
+    name: string,
+    pinned: bool,
+}
 
-export component TestCase inherits Window {
-    width: 700px;
-    height: 420px;
+export component MainWindow inherits Window {
+    title: "FlexboxLayout layout-order demo";
+    // Explicit constraints keep the window resizable while breaking the
+    // feedback from `narrow` (which depends on `width`) into the
+    // content-derived preferred size.
+    preferred-width: 540px;
+    preferred-height: 620px;
+    min-width: 320px;
+    min-height: 400px;
     background: #071b24;
+    init => { Palette.color-scheme = ColorScheme.dark; }
 
-    Rectangle {
-        x: 30px;
-        y: 30px;
-        width: parent.width - 60px;
-        height: parent.height - 60px;
-        background: #062d3b;
-        border-radius: 8px;
+    // Section 1: no order vector at all; the order is derived from the data.
+    in property <[Task]> tasks: [];
 
-        // FlexboxLayout {
-        //     width: 100%;
-        //     flex-direction: column;
-        //     padding: 48px;
-        //     spacing: 16px;
-        //     alignment: center;
-        //     cross-axis-alignment: start;
+    // Section 2: static elements, no model possible.
+    in-out property <bool> windows-button-order: false;
 
-        //     RadioButton { label: "English (US)"; }
-        //     RadioButton { label: "English (British)"; }
-        //     RadioButton { label: "Deutsch"; }
-        //     RadioButton { label: "Français"; }
-        // }
-        RadioButton { label: "English (US)"; }
+    // Section 3: responsive breakpoint.
+    out property <bool> narrow: root.width < 460px;
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 10px;
+        alignment: start;
+
+        SectionTitle { text: "1. Pinned first — order derived from the data, no bookkeeping"; }
+        FlexboxLayout {
+            flex-direction: column;
+            flex-wrap: no-wrap;
+            spacing: 6px;
+            for task in root.tasks: Rectangle {
+                // Pinned tasks float to the top; ties keep model order (stable sort).
+                layout-order: task.pinned ? 0 : 1;
+                height: 38px;
+                border-radius: 6px;
+                background: task.pinned ? #6b5b1f : #0e3a4c;
+                animate background { duration: 150ms; }
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 8px;
+                    padding-top: 3px;
+                    padding-bottom: 3px;
+                    spacing: 6px;
+                    Text {
+                        text: task.name;
+                        color: white;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                    }
+                    CheckBox {
+                        text: "pin";
+                        checked: task.pinned;
+                        toggled => { task.pinned = self.checked; }
+                    }
+                }
+            }
+        }
+
+        Rectangle { height: 8px; }
+
+        SectionTitle { text: "2. Static elements — platform-dependent dialog button order"; }
+        CheckBox {
+            text: "Windows-style (OK first)";
+            checked <=> root.windows-button-order;
+        }
+        FlexboxLayout {
+            spacing: 8px;
+            alignment: end;
+            Button {
+                text: "OK";
+                layout-order: root.windows-button-order ? 0 : 1;
+            }
+            Button {
+                text: "Cancel";
+                layout-order: root.windows-button-order ? 1 : 0;
+            }
+        }
+
+        Rectangle { height: 8px; }
+
+        SectionTitle { text: "3. Responsive — content first on narrow windows (resize me)"; }
+        FlexboxLayout {
+            spacing: 8px;
+            Rectangle {
+                layout-order: root.narrow ? 1 : 0;
+                width: 120px;
+                height: 120px;
+                border-radius: 6px;
+                background: #234c5c;
+                Text {
+                    text: "Sidebar";
+                    color: white;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+            Rectangle {
+                layout-order: root.narrow ? 0 : 1;
+                min-width: 280px;
+                height: 120px;
+                horizontal-stretch: 1;
+                border-radius: 6px;
+                background: #0e3a4c;
+                Text {
+                    // Not bound to `narrow`: text constraints propagate up to the
+                    // window's preferred size, which would form a binding loop.
+                    // No word-wrap: a wrapped Text inside a flex item makes the
+                    // item's height depend on its width, which recurses through
+                    // the flexbox measure callback.
+                    text: "Content\n(sidebar moves below 460px)";
+                    color: white;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
     }
 }
